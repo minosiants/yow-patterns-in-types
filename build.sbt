@@ -9,10 +9,6 @@ libraryDependencies ++= Seq(
   "org.scalacheck" %% "scalacheck" % "1.13.4" % "test"
 )
 
-resolvers ++= Seq(
-  "oss snapshots" at "http://oss.sonatype.org/content/repositories/snapshots",
-  "oss releases"  at "http://oss.sonatype.org/content/repositories/releases"
-)
 
 scalacOptions := Seq(
   "-deprecation",
@@ -21,3 +17,4 @@ scalacOptions := Seq(
   "-feature",
   "-language:_"
 )
+

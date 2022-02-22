@@ -12,3 +12,6 @@ target
 /project/boot
 /.project
 /.classpath
+.bloop
+.vscode
+.metals

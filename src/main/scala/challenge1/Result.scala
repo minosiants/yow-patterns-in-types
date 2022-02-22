@@ -2,7 +2,6 @@ package challenge1
 
 import core._, Syntax._
 
-
 /*
  * Handling errors without exceptions....
  * ======================================
@@ -44,9 +43,12 @@ sealed trait Result[A] {
    *  = 0
    */
   def fold[X](
-    fail: Error => X,
-    ok: A => X
-  ): X = ???
+      fail: Error => X,
+      ok: A => X
+  ): X = this match {
+    case Fail(error) => fail(error)
+    case Ok(value)   => ok(value)
+  }
 
   /*
    * Exercise 1.2:
@@ -66,8 +68,10 @@ sealed trait Result[A] {
    * Advanced: Try using flatMap.
    */
   def map[B](f: A => B): Result[B] =
-    ???
-
+    this match {
+      case Fail(error) => Result.fail(error)
+      case Ok(value)   => Result.ok(f(value))
+    }
 
   /*
    * Exercise 1.3:
@@ -92,8 +96,10 @@ sealed trait Result[A] {
    * Advanced: Try using fold.
    */
   def flatMap[B](f: A => Result[B]): Result[B] =
-    ???
-
+    this match {
+      case Fail(error) => Result.fail(error)
+      case Ok(value)   => f(value)
+    }
 
   /*
    * Exercise 1.4:
@@ -108,8 +114,10 @@ sealed trait Result[A] {
    *  = 10
    */
   def getOrElse(otherwise: => A): A =
-    ???
-
+    this match {
+      case Fail(error) => otherwise
+      case Ok(value)   => value
+    }
 
   /*
    * Exercise 1.4:
@@ -130,7 +138,10 @@ sealed trait Result[A] {
    *  = Fail(Unauthorized)
    */
   def |||(alternative: => Result[A]): Result[A] =
-    ???
+    this match {
+      case Fail(_)    => alternative
+      case ok @ Ok(_) => ok
+    }
 }
 
 object Result {
@@ -146,12 +157,13 @@ object Result {
   }
 
   implicit def ResultEqual[A: Equal] =
-    Equal.from[Result[A]]((a, b) => a.fold(
-      e => b.fold(_ === e, _ => false),
-      a => b.fold(_ => false, _ === a)
-    ))
+    Equal.from[Result[A]]((a, b) =>
+      a.fold(
+        e => b.fold(_ === e, _ => false),
+        a => b.fold(_ => false, _ === a)
+      )
+    )
 }
-
 
 /*
  * *Challenge* Exercise 1.5: The worlds most trivial HTTP calculator.
@@ -180,11 +192,21 @@ object Example {
    * Hint: Scala defines String#toInt, but warning it throws exceptions if it is not a valid Int :|
    */
   def request(body: String): Result[Int] =
-    ???
+    try {
+      Result.ok(body.toInt)
+    } catch {
+      case e: Throwable => Result.fail(InvalidRequest)
+    }
 
   /* Parse the method if it is valid, otherwise fail with InvalidMethod. */
   def method(method: String): Result[Method] =
-    ???
+    method match {
+      case "GET"    => Result.ok(Get)
+      case "POST"   => Result.ok(Post)
+      case "PUT"    => Result.ok(Put)
+      case "DELETE" => Result.ok(Delete)
+      case _        => Result.fail(InvalidMethod)
+    }
 
   /*
    * Route method and path to an implementation.
@@ -199,7 +221,15 @@ object Example {
    *   *           -> NotFound
    */
   def route(method: Method, path: String): Result[Int => Int] =
-    ???
+    (method, path) match {
+      case (Get, "/single") => Result.ok(n => n * 1)
+      case (Get, "/double") => Result.ok(n => n * 2)
+      case (Get, "/triple") => Result.ok(n => n * 3)
+      case (Put, _)         => Result.fail(Unauthorized)
+      case (Post, _)        => Result.fail(Unauthorized)
+      case (Delete, _)      => Result.fail(Unauthorized)
+      case _                => Result.fail(NotFound)
+    }
 
   /*
    * Attempt to compute an `answer`, by:
@@ -208,13 +238,16 @@ object Example {
    *  - determing request value
    *  - using the implementation and request value to compute an answer.
    */
-  def service(path: String, methodx: String, body: String): Result[Int] =
-    ???
+  def service(path: String, methodx: String, body: String): Result[Int] = for {
+    m <- method(methodx)
+    r <- request(body)
+    f <- route(m, path)
+  } yield f(r)
 
   /*
    * Sometimes we always an `answer`, so default to 0 if
    * our request failed in any way.
    */
   def run(path: String, method: String, body: String): Int =
-    ???
+    service(path, method, body).getOrElse(0)
 }
